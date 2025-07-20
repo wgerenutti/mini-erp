@@ -1,26 +1,69 @@
-<form method="POST" action="{{ route('produtos.store') }}">
-    @csrf
-    <div class="mb-3">
-        <label class="form-label">Nome</label>
-        <input name="nome" value="{{ old('nome') }}" class="form-control @error('nome') is-invalid @enderror">
-        @error('nome')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+@extends('layouts.app')
+
+@section('content')
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">Produtos</h1>
+            <a href="{{ route('produtos.create') }}" class="btn btn-success">
+                <i class="bi bi-plus-lg me-1"></i> Novo Produto
+            </a>
+        </div>
+
+        <table id="produtosTable" class="table table-striped table-hover" style="width:100%">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Preço (R$)</th>
+                    <th>Estoque</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($produtos as $produto)
+                    <tr>
+                        <td>{{ $produto->id }}</td>
+                        <td>{{ $produto->nome }}</td>
+                        <td>{{ number_format($produto->preco, 2, ',', '.') }}</td>
+                        <td>{{ $produto->estoque->quantidade ?? '-' }}</td>
+                        <td>
+                            <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-primary me-1">
+                                <i class="bi bi-pencil-fill"></i>
+                            </a>
+                            <form action="{{ route('produtos.destroy', $produto) }}" method="POST" class="d-inline"
+                                onsubmit="return confirm('Excluir produto?')">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="mt-3">
+            {{ $produtos->links() }}
+        </div>
     </div>
-    <!-- Preço -->
-    <div class="mb-3">
-        <label class="form-label">Preço</label>
-        <input name="preco" type="number" step="0.01" value="{{ old('preco') }}"
-            class="form-control @error('preco') is-invalid @enderror">
-        @error('preco')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
-    </div>
-    <!-- Quantidade inicial -->
-    <div class="mb-3">
-        <label class="form-label">Quantidade Inicial</label>
-        <input name="quantidade_inicial" type="number" value="{{ old('quantidade_inicial', 0) }}" class="form-control">
-    </div>
-    <!-- Se quiser variações via JS, repita grupos de inputs aqui -->
-    <button class="btn btn-primary">Salvar</button>
-</form>
+
+    @push('scripts')
+        <script>
+            $(document).ready(function() {
+                $('#produtosTable').DataTable({
+                    paging: false,
+                    info: false,
+                    searching: true,
+                    order: [
+                        [1, 'asc']
+                    ],
+                    language: {
+                        url: "https://cdn.datatables.net/plug-ins/1.13.4/i18n/pt-PT.json"
+                    },
+                });
+            });
+        </script>
+    @endpush
+@endsection

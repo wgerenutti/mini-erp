@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class StoreProdutoRequest extends FormRequest
 {
@@ -11,7 +12,25 @@ class StoreProdutoRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return Auth::check();
+    }
+
+    /**
+     * Prepare the data for validation.
+     *
+     * Strips out thousands separators (dots) and converts the decimal
+     * comma to a dot so that the `preco` field can be correctly
+     * recognized as a numeric value by Laravel’s validator.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('preco')) {
+            $preco = str_replace('.', '', $this->input('preco'));
+            $preco = str_replace(',', '.', $preco);
+            $this->merge(['preco' => $preco]);
+        }
     }
 
     /**
@@ -22,7 +41,8 @@ class StoreProdutoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'nome'  => ['required', 'string', 'max:255'],
+            'preco' => ['required', 'numeric', 'min:0'],
         ];
     }
 }
