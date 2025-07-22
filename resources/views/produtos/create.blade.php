@@ -28,7 +28,7 @@
                     value="{{ old('quantidade_inicial', 0) }}" class="form-control" min="0">
             </div>
             <button class="btn btn-primary">Salvar</button>
-            <a href="{{ route('produtos.index') }}" class="btn btn-secondary ms-2">Cancelar</a>
+            <a href="{{ route('produtos.index') }}" class="btn btn-danger ms-2">Cancelar</a>
         </form>
     </div>
     @push('scripts')

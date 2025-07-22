@@ -8,6 +8,11 @@
                 <i class="bi bi-plus-lg me-1"></i> Novo Produto
             </a>
         </div>
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
 
         <table id="produtosTable" class="table table-striped table-hover" style="width:100%">
             <thead>
