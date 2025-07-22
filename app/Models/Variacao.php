@@ -12,4 +12,9 @@ class Variacao extends Model
      * @var string
      */
     protected $table = 'variacoes';
+
+    public function estoque()
+    {
+        return $this->hasOne(Estoque::class);
+    }
 }

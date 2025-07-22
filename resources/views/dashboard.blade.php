@@ -4,48 +4,7 @@
     <div class="container-fluid">
         <div class="row">
 
-            {{-- Sidebar --}}
-            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item mb-1">
-                            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active fw-bold' : 'text-dark' }}"
-                                href="{{ route('dashboard') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>
-                                Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item mb-1">
-                            <a class="nav-link {{ request()->routeIs('produtos.*') ? 'active fw-bold' : 'text-dark' }}"
-                                href="{{ route('produtos.index') }}">
-                                <i class="bi bi-box-seam me-2"></i>
-                                Produtos
-                            </a>
-                        </li>
-                        <li class="nav-item mb-1">
-                            <a class="nav-link {{ request()->routeIs('pedido.*') ? 'active fw-bold' : 'text-dark' }}"
-                                href="{{ route('pedido.index') }}">
-                                <i class="bi bi-cart4 me-2"></i>
-                                Pedidos
-                            </a>
-                        </li>
-                        <li class="nav-item mb-1">
-                            <a class="nav-link {{ request()->routeIs('cupons.*') ? 'active fw-bold' : 'text-dark' }}"
-                                href="{{ route('cupons.index') }}">
-                                <i class="bi bi-ticket-perforated me-2"></i>
-                                Cupons
-                            </a>
-                        </li>
-                        <li class="nav-item mb-1">
-                            <a class="nav-link {{ request()->routeIs('estoque.*') ? 'active fw-bold' : 'text-dark' }}"
-                                href="{{ route('estoque.index') }}">
-                                <i class="bi bi-stack me-2"></i>
-                                Estoque
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            @include('partials.sidebar')
 
             {{-- Main content --}}
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
