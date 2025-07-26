@@ -27,9 +27,22 @@ class UpdateProdutoRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->filled('preco')) {
-            $preco = str_replace('.', '', $this->input('preco'));
-            $preco = str_replace(',', '.', $preco);
-            $this->merge(['preco' => $preco]);
+            $p = str_replace('.', '', $this->input('preco'));
+            $p = str_replace(',', '.', $p);
+            $this->merge(['preco' => $p]);
+        }
+
+        if ($this->has('variacoes') && is_array($this->input('variacoes'))) {
+            $variacoes = collect($this->input('variacoes'))->map(function ($var) {
+                if (isset($var['preco'])) {
+                    $p = str_replace('.', '', $var['preco']);
+                    $p = str_replace(',', '.', $p);
+                    $var['preco'] = $p;
+                }
+                return $var;
+            })->toArray();
+
+            $this->merge(['variacoes' => $variacoes]);
         }
     }
 

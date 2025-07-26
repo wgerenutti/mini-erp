@@ -13,5 +13,9 @@ class Estoque extends Model
      */
     protected $table = 'estoque';
 
-    protected $fillable = ['quantidade'];
+    protected $fillable = [
+        'produto_id',
+        'variacao_id',
+        'quantidade'
+    ];
 }

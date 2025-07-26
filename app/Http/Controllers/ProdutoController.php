@@ -6,6 +6,7 @@ use App\Models\Produto;
 use Illuminate\Http\Request;
 use App\Http\Requests\UpdateProdutoRequest;
 use App\Http\Requests\StoreProdutoRequest;
+use Illuminate\Support\Facades\DB;
 
 class ProdutoController extends Controller
 {
@@ -29,22 +30,34 @@ class ProdutoController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreProdutoRequest $request)
+    public function store(StoreProdutoRequest $req)
     {
-        $produto = Produto::create($request->validated());
+        DB::transaction(function () use ($req) {
+            $produto = Produto::create($req->validated());
 
-        if ($request->has('variacoes')) {
-            foreach ($request->input('variacoes') as $var) {
-                $produto->variacoes()->create($var);
+            $produto->estoque()->create([
+                'quantidade'  => $req->input('quantidade', 0),
+                'variacao_id' => null,
+            ]);
+
+            foreach ($req->input('variacoes', []) as $var) {
+                $precoVar = floatval($var['preco'] ?? 0) > 0
+                    ? $var['preco']
+                    : $produto->preco;
+
+                $v = $produto->variacoes()->create([
+                    'nome'  => $var['nome'],
+                    'preco' => $precoVar,
+                ]);
+
+                $produto->estoque()->create([
+                    'quantidade'  => $var['quantidade'] ?? 0,
+                    'variacao_id' => $v->id,
+                ]);
             }
-        }
+        });
 
-        $produto->estoque()->create([
-            'quantidade' => $request->input('quantidade_inicial', 0),
-        ]);
-
-        return redirect()
-            ->route('produtos.index')
+        return redirect()->route('produtos.index')
             ->with('success', 'Produto criado com sucesso.');
     }
 
@@ -70,10 +83,45 @@ class ProdutoController extends Controller
      */
     public function update(UpdateProdutoRequest $req, Produto $produto)
     {
-        $produto->update($req->validated());
+        DB::transaction(function () use ($req, $produto) {
+            $produto->update($req->validated());
 
-        return redirect()
-            ->route('produtos.index')
+            $estoqueGeral = $produto->estoque()->firstOrNew(['variacao_id' => null]);
+            $estoqueGeral->quantidade = $req->input('quantidade', 0);
+            $estoqueGeral->save();
+
+            $submitted  = collect($req->input('variacoes', []));
+            $currentIds = $produto->variacoes()->pluck('id');
+
+            $toDelete = $currentIds->diff($submitted->pluck('id')->filter());
+            $produto->variacoes()->whereIn('id', $toDelete)->delete();
+
+            $submitted->each(function ($varData) use ($produto) {
+                $precoVar = floatval($varData['preco'] ?? 0) > 0
+                    ? $varData['preco']
+                    : $produto->preco;
+
+                if (!empty($varData['id'])) {
+                    $v = $produto->variacoes()->find($varData['id']);
+                    $v->update([
+                        'nome'  => $varData['nome'],
+                        'preco' => $precoVar,
+                    ]);
+                } else {
+                    $v = $produto->variacoes()->create([
+                        'nome'  => $varData['nome'],
+                        'preco' => $precoVar,
+                    ]);
+                }
+
+                $produto->estoque()->updateOrCreate(
+                    ['variacao_id' => $v->id],
+                    ['quantidade'  => $varData['quantidade'] ?? 0]
+                );
+            });
+        });
+
+        return redirect()->route('produtos.index')
             ->with('success', 'Produto atualizado com sucesso.');
     }
 

@@ -19,13 +19,14 @@
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
 
-                <table id="produtosTable" class="table table-striped table-hover" style="width:100%">
+                <table id="produtosTable" class="table table-striped table-hover w-100">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Nome</th>
                             <th>Preço (R$)</th>
                             <th>Estoque</th>
+                            <th>Variações</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -35,18 +36,21 @@
                                 <td>{{ $produto->id }}</td>
                                 <td>{{ $produto->nome }}</td>
                                 <td>{{ number_format($produto->preco, 2, ',', '.') }}</td>
-                                <td>{{ $produto->estoque->quantidade ?? '-' }}</td>
+                                <td>{{ $produto->estoque->whereNull('variacao_id')->first()->quantidade ?? '-' }}</td>
                                 <td>
-                                    <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-primary me-1">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </a>
+                                    @foreach ($produto->variacoes as $variacao)
+                                        <span class="badge bg-secondary">
+                                            {{ $variacao->nome }} ({{ $variacao->estoque->quantidade ?? 0 }})
+                                        </span>
+                                    @endforeach
+                                </td>
+                                <td>
+                                    <a href="{{ route('produtos.edit', $produto) }}" class="btn btn-sm btn-primary me-1"><i
+                                            class="bi bi-pencil-fill"></i></a>
                                     <form action="{{ route('produtos.destroy', $produto) }}" method="POST" class="d-inline"
                                         onsubmit="return confirm('Excluir produto?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm btn-danger">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </td>
                             </tr>

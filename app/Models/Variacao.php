@@ -6,6 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Variacao extends Model
 {
+
+    protected $fillable = [
+        'nome',
+        'preco',
+    ];
+
     /**
      * The table associated with the model.
      *
