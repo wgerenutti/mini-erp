@@ -25,11 +25,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('estoque', EstoqueController::class)->only(['index', 'update']);
     Route::resource('cupons', CupomController::class)->except(['show']);
     Route::get('carrinho', [PedidoController::class, 'carrinho'])->name('carrinho.show');
-    Route::post('carrinho/adicionar', [PedidoController::class, 'adicionar'])->name('carrinho.adicionar');
+    Route::post('carrinho/{produto}/adicionar', [PedidoController::class, 'adicionar'])->name('carrinho.adicionar');
+    Route::post('carrinho/cep', [PedidoController::class, 'setCep'])->name('carrinho.cep');
+    Route::delete('carrinho/remover', [PedidoController::class, 'remover'])->name('carrinho.remover');
     Route::get('pedido', [PedidoController::class, 'index'])->name('pedido.index');
-    Route::post('carrinho/remover', [PedidoController::class, 'remover'])->name('carrinho.remover');
+    Route::patch('carrinho/{key}', [PedidoController::class, 'atualizarQuantidade'])->name('carrinho.atualizar');
+    Route::delete('carrinho/{key}/remover', [PedidoController::class, 'remover'])->name('carrinho.remover');
     Route::post('pedido/finalizar', [PedidoController::class, 'finalizar'])->name('pedido.finalizar');
     Route::post('webhook/pedido', [PedidoController::class, 'webhook'])->name('pedido.webhook');
+    Route::patch('carrinho/{key}', [PedidoController::class, 'atualizarQuantidade'])->name('carrinho.atualizar');
 });
 
 require __DIR__ . '/auth.php';
