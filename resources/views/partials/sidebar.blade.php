@@ -14,8 +14,8 @@
                 </a>
             </li>
             <li class="nav-item mb-1">
-                <a class="nav-link @if (request()->routeIs('pedido.*')) active fw-bold @else text-dark @endif"
-                    href="{{ route('pedido.index') }}">
+                <a class="nav-link @if (request()->routeIs('pedidos.*')) active fw-bold @else text-dark @endif"
+                    href="{{ route('pedidos.index') }}">
                     <i class="bi bi-cart4 me-2"></i> Pedidos
                 </a>
             </li>

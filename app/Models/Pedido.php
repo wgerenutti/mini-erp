@@ -18,4 +18,9 @@ class Pedido extends Model
     {
         return $this->hasMany(PedidoItem::class);
     }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

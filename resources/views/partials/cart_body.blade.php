@@ -78,9 +78,16 @@
                 {{ number_format($c['total'], 2, ',', '.') }}</strong></div>
     </div>
 
-    <form action="{{ route('pedido.finalizar') }}" method="POST" class="mt-auto">
+    <form action="{{ route('pedidos.finalizar') }}" method="POST" class="mt-auto finalize-form">
         @csrf
         <input type="hidden" name="cep" value="{{ $c['cep'] }}">
-        <button class="btn btn-success w-100">Finalizar Pedido</button>
+
+        <button type="submit" class="btn btn-success w-100 position-relative"
+            @if (!$c['cep']) disabled title="Informe o CEP antes de finalizar" @endif>
+            <span
+                class="spinner-border spinner-border-sm position-absolute top-50 start-50 translate-middle d-none finalize-spinner"
+                role="status"></span>
+            <span class="finalize-text">Finalizar Pedido</span>
+        </button>
     </form>
 @endif

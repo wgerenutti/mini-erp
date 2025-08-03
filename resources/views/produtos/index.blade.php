@@ -244,6 +244,29 @@
                     .catch(() => alert('Erro ao atualizar quantidade'));
             });
 
+            new DataTable('#produtosTable', {
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/2.3.2/i18n/pt-BR.json'
+                },
+                paging: false,
+                ordering: true,
+                responsive: true
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('.finalize-form');
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                const btn = form.querySelector('button[type="submit"]');
+                const spinner = btn.querySelector('.finalize-spinner');
+                const text = btn.querySelector('.finalize-text');
+
+                btn.disabled = true;
+                text.classList.add('visually-hidden');
+                spinner.classList.remove('d-none');
+            });
         });
     </script>
 @endpush

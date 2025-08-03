@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Http;
 use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Produto;
+use App\Models\Estoque;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PedidoController extends Controller
 {
@@ -17,7 +19,8 @@ class PedidoController extends Controller
      */
     public function index()
     {
-        //
+        $pedidos = Pedido::with('creator')->orderByDesc('created_at')->paginate(15);
+        return view('pedidos.index', compact('pedidos'));
     }
 
     /**
@@ -65,7 +68,28 @@ class PedidoController extends Controller
      */
     public function destroy(Pedido $pedido)
     {
-        //
+        DB::transaction(function () use ($pedido) {
+            foreach ($pedido->itens as $item) {
+                $estoque = $item->produto
+                    ->estoque()
+                    ->when($item->variacao_id, fn($q) => $q->where('variacao_id', $item->variacao_id))
+                    ->when(!$item->variacao_id, fn($q) => $q->whereNull('variacao_id'))
+                    ->first();
+
+                if ($estoque) {
+                    $estoque->quantidade += $item->quantidade;
+                    $estoque->save();
+                }
+            }
+
+            $pedido->itens()->delete();
+
+            $pedido->delete();
+        });
+
+        return redirect()
+            ->route('pedidos.index')
+            ->with('success', 'Pedido e referências removidos com sucesso!');
     }
 
     /**
