@@ -44,7 +44,12 @@ class PedidoController extends Controller
      */
     public function show(Pedido $pedido)
     {
-        //
+        $pedido->load([
+            'itens.produto',
+            'itens.variacao'
+        ]);
+
+        return view('pedidos.show', compact('pedido'));
     }
 
     /**

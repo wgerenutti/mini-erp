@@ -31,4 +31,9 @@ class PedidoItem extends Model
     {
         return $this->belongsTo(Produto::class);
     }
+
+    public function variacao()
+    {
+        return $this->belongsTo(Variacao::class);
+    }
 }
