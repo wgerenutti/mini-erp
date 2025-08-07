@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cupom;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreCupomRequest;
 
 class CupomController extends Controller
 {
@@ -12,7 +13,8 @@ class CupomController extends Controller
      */
     public function index()
     {
-        //
+        $cupons = Cupom::orderByDesc('created_at')->paginate(15);
+        return view('cupons.index', compact('cupons'));
     }
 
     /**
@@ -20,17 +22,18 @@ class CupomController extends Controller
      */
     public function create()
     {
-        //
+        return view('cupons.create');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreCupomRequest $request)
     {
-        //
+        Cupom::create($request->validated());
+        return redirect()->route('cupons.index')
+            ->with('success', 'Cupom criado com sucesso!');
     }
-
     /**
      * Display the specified resource.
      */
@@ -44,7 +47,7 @@ class CupomController extends Controller
      */
     public function edit(Cupom $cupom)
     {
-        //
+        return view('cupons.edit', compact('cupom'));
     }
 
     /**
@@ -61,5 +64,19 @@ class CupomController extends Controller
     public function destroy(Cupom $cupom)
     {
         //
+    }
+
+    /**
+     * Alterna o status 'ativo' do cupom.
+     */
+    public function toggle(Cupom $cupom)
+    {
+        $cupom->ativo = ! $cupom->ativo;
+        $cupom->save();
+
+        $status = $cupom->ativo ? 'ativado' : 'desativado';
+        return redirect()
+            ->route('cupons.index')
+            ->with('success', "Cupom “{$cupom->codigo}” {$status} com sucesso!");
     }
 }

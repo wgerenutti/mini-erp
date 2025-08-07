@@ -25,12 +25,6 @@
                     <i class="bi bi-ticket-perforated me-2"></i> Cupons
                 </a>
             </li>
-            <li class="nav-item mb-1">
-                <a class="nav-link @if (request()->routeIs('estoque.*')) active fw-bold @else text-dark @endif"
-                    href="{{ route('estoque.index') }}">
-                    <i class="bi bi-stack me-2"></i> Estoque
-                </a>
-            </li>
         </ul>
     </div>
 </nav>

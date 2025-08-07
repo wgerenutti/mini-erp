@@ -69,7 +69,7 @@
         <script>
             new DataTable('#pedidosTable', {
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/2.3.2/i18n/pt-BR.json'
+                    url: '/vendor/datatables/i18n/pt-BR.json'
                 },
                 paging: false,
                 ordering: true,

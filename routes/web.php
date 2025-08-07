@@ -24,6 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('variacoes', VariacaoController::class)->shallow();
     Route::resource('estoque', EstoqueController::class)->only(['index', 'update']);
     Route::resource('cupons', CupomController::class)->except(['show']);
+    Route::patch('cupons/{cupom}/toggle', [CupomController::class, 'toggle'])
+        ->name('cupons.toggle');
     Route::get('carrinho', [PedidoController::class, 'carrinho'])->name('carrinho.show');
     Route::post('carrinho/{produto}/adicionar', [PedidoController::class, 'adicionar'])->name('carrinho.adicionar');
     Route::post('carrinho/cep', [PedidoController::class, 'setCep'])->name('carrinho.cep');
@@ -32,7 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('carrinho/{key}/remover', [PedidoController::class, 'remover'])->name('carrinho.remover');
     Route::post('webhook/pedido', [PedidoController::class, 'webhook'])->name('pedido.webhook');
     Route::patch('carrinho/{key}', [PedidoController::class, 'atualizarQuantidade'])->name('carrinho.atualizar');
-    Route::resource('pedidos', PedidoController::class)->except(['create','store','edit','update']);
+    Route::resource('pedidos', PedidoController::class)->except(['create', 'store', 'edit', 'update']);
     Route::post('pedidos/finalizar', [PedidoController::class, 'finalizar'])->name('pedidos.finalizar');
 });
 

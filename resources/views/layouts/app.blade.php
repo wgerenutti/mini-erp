@@ -68,6 +68,8 @@
 
     <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-maskmoney/3.0.2/jquery.maskMoney.min.js"></script>
+
     @vite(['resources/js/app.js'])
 
     @stack('scripts')
