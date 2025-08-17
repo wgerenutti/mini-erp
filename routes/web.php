@@ -36,6 +36,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('carrinho/{key}', [PedidoController::class, 'atualizarQuantidade'])->name('carrinho.atualizar');
     Route::resource('pedidos', PedidoController::class)->except(['create', 'store', 'edit', 'update']);
     Route::post('pedidos/finalizar', [PedidoController::class, 'finalizar'])->name('pedidos.finalizar');
+    Route::post('carrinho/cupom', [PedidoController::class, 'aplicarCupom'])
+        ->name('carrinho.aplicar_cupom');
+    Route::delete('carrinho/cupom', [PedidoController::class, 'removerCupom'])
+        ->name('carrinho.remover_cupom');
 });
 
 require __DIR__ . '/auth.php';

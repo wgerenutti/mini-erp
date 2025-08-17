@@ -9,6 +9,7 @@ use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Produto;
 use App\Models\Estoque;
+use App\Models\Cupom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +47,8 @@ class PedidoController extends Controller
     {
         $pedido->load([
             'itens.produto',
-            'itens.variacao'
+            'itens.variacao',
+            'cupons'
         ]);
 
         return view('pedidos.show', compact('pedido'));
@@ -157,6 +159,81 @@ class PedidoController extends Controller
     /**
      * Finaliza o pedido, valida o CEP, salva o pedido e atualiza o estoque.
      */
+    public function aplicarCupom(Request $request)
+    {
+        $data = $request->validate([
+            'codigo' => 'required|string',
+        ]);
+
+        $codigo = trim($data['codigo']);
+        $cupom = Cupom::whereRaw('LOWER(codigo) = ?', [strtolower($codigo)])->first();
+
+        $items = session('carrinho.items', []);
+        $subtotal = array_sum(array_map(fn($i) => $i['preco'] * $i['quantidade'], $items));
+
+        if (!$cupom) {
+            return response()->json(['error' => 'Cupom não encontrado'], 404);
+        }
+
+        if (! $cupom->isActiveNow()) {
+            return response()->json(['error' => 'Cupom inválido ou expirado'], 422);
+        }
+
+        if (! $cupom->isValidForSubtotal($subtotal)) {
+            return response()->json(['error' => "Cupom exige um pedido mínimo de R$ " . number_format($cupom->minimo, 2, ',', '.')], 422);
+        }
+
+        $desconto = $cupom->calculateDiscount($subtotal);
+
+        $carrinho = session('carrinho', [
+            'items' => [],
+            'subtotal' => 0,
+            'frete' => 0,
+            'total' => 0,
+        ]);
+
+        $carrinho['cupom'] = [
+            'id' => $cupom->id,
+            'codigo' => $cupom->codigo,
+            'desconto_aplicado' => $desconto,
+        ];
+
+        $carrinho['subtotal'] = $subtotal;
+        $this->syncCartSession($carrinho['items'], $carrinho['cep'] ?? null, $carrinho['endereco'] ?? null);
+
+        $saved = session('carrinho');
+        $saved['cupom'] = $carrinho['cupom'];
+
+        $saved['total'] = max(0, $saved['subtotal'] + $saved['frete'] - $desconto);
+
+        session(['carrinho' => $saved]);
+
+        $cartHtml = view('partials.cart_body')->render();
+
+        return response()->json([
+            'count' => count($saved['items'] ?? []),
+            'cart_html' => $cartHtml
+        ]);
+    }
+
+    public function removerCupom(Request $request)
+    {
+        $carrinho = session('carrinho', []);
+        if (isset($carrinho['cupom'])) {
+            unset($carrinho['cupom']);
+            $this->syncCartSession($carrinho['items'] ?? [], $carrinho['cep'] ?? null, $carrinho['endereco'] ?? null);
+            $saved = session('carrinho');
+            $saved['total'] = $saved['subtotal'] + $saved['frete'];
+            session(['carrinho' => $saved]);
+        }
+
+        $cartHtml = view('partials.cart_body')->render();
+        return response()->json([
+            'count' => count(session('carrinho.items', [])),
+            'cart_html' => $cartHtml
+        ]);
+    }
+
     public function finalizar(Request $req)
     {
         $data = $req->validate([
@@ -171,47 +248,107 @@ class PedidoController extends Controller
         }
 
         $endereco = $resp->json();
-        $carrinho = session('carrinho');
+        $carrinho = session('carrinho', [
+            'items'    => [],
+            'subtotal' => 0,
+            'frete'    => 0,
+            'total'    => 0,
+            'cep'      => null,
+            'endereco' => null,
+        ]);
+
         if (empty($carrinho['items'] ?? [])) {
             return back()->with('error', 'Carrinho vazio.');
         }
 
         $userId = Auth::id();
 
-        DB::transaction(function () use ($cep, $endereco, $carrinho, $userId) {
-            $pedido = Pedido::create([
-                'cep'         => $cep,
-                'endereco'    => "{$endereco['logradouro']}, " . ($endereco['bairro'] ?? '') . " - {$endereco['localidade']}/{$endereco['uf']}",
-                'subtotal'    => $carrinho['subtotal'],
-                'frete'       => $carrinho['frete'],
-                'total'       => $carrinho['total'],
-                'created_by'  => $userId,
-            ]);
+        try {
+            DB::transaction(function () use ($cep, $endereco, $carrinho, $userId) {
+                $cupomData = $carrinho['cupom'] ?? null;
+                $desconto = 0;
+                $cupom = null;
 
-            foreach ($carrinho['items'] as $item) {
-                PedidoItem::create([
-                    'pedido_id'   => $pedido->id,
-                    'produto_id'  => $item['produto_id'],
-                    'variacao_id' => $item['variacao_id'],
-                    'quantidade'  => $item['quantidade'],
-                    'preco_unit'  => $item['preco'],
-                    'total_item'  => $item['preco'] * $item['quantidade'],
+                if ($cupomData && ! empty($cupomData['id'])) {
+                    $cupom = \App\Models\Cupom::lockForUpdate()->find($cupomData['id']);
+
+                    if (! $cupom || ! $cupom->isActiveNow()) {
+                        throw new \Exception('Cupom inválido no momento do pagamento.');
+                    }
+
+                    $subtotal = array_sum(array_map(fn($i) => $i['preco'] * $i['quantidade'], $carrinho['items']));
+
+                    if (! $cupom->isValidForSubtotal($subtotal)) {
+                        throw new \Exception('Cupom não atende ao mínimo no momento do pagamento.');
+                    }
+
+                    $desconto = $cupom->calculateDiscount($subtotal);
+
+                    if ($cupom->uso_maximo !== null && $cupom->uso_count >= $cupom->uso_maximo) {
+                        throw new \Exception('Cupom atingiu o limite de usos.');
+                    }
+
+                    $cupom->uso_count = $cupom->uso_count + 1;
+                    $cupom->save();
+                }
+
+                $pedido = Pedido::create([
+                    'cep'         => $cep,
+                    'endereco'    => "{$endereco['logradouro']}, " . ($endereco['bairro'] ?? '') . " - {$endereco['localidade']}/{$endereco['uf']}",
+                    'subtotal'    => $carrinho['subtotal'],
+                    'frete'       => $carrinho['frete'],
+                    'total'       => max(0, ($carrinho['subtotal'] ?? 0) + ($carrinho['frete'] ?? 0) - $desconto),
                     'created_by'  => $userId,
                 ]);
 
-                $produto = Produto::findOrFail($item['produto_id']);
-                $estoqueQuery = $produto->estoque()
-                    ->when($item['variacao_id'], fn($q) => $q->where('variacao_id', $item['variacao_id']))
-                    ->when(!$item['variacao_id'], fn($q) => $q->whereNull('variacao_id'));
+                foreach ($carrinho['items'] as $item) {
+                    PedidoItem::create([
+                        'pedido_id'   => $pedido->id,
+                        'produto_id'  => $item['produto_id'],
+                        'variacao_id' => $item['variacao_id'],
+                        'quantidade'  => $item['quantidade'],
+                        'preco_unit'  => $item['preco'],
+                        'total_item'  => $item['preco'] * $item['quantidade'],
+                        'created_by'  => $userId,
+                    ]);
 
-                $estoque = $estoqueQuery->firstOrFail();
-                if ($estoque->quantidade < $item['quantidade']) {
-                    throw new \Exception("Estoque insuficiente para o produto {$produto->nome}");
+                    $produto = Produto::findOrFail($item['produto_id']);
+                    $estoqueQuery = $produto->estoque()
+                        ->when($item['variacao_id'], fn($q) => $q->where('variacao_id', $item['variacao_id']))
+                        ->when(!$item['variacao_id'], fn($q) => $q->whereNull('variacao_id'));
+
+                    $estoque = $estoqueQuery->firstOrFail();
+                    if ($estoque->quantidade < $item['quantidade']) {
+                        throw new \Exception("Estoque insuficiente para o produto {$produto->nome}");
+                    }
+
+                    $estoque->quantidade -= $item['quantidade'];
+                    $estoque->save();
                 }
-                $estoque->quantidade -= $item['quantidade'];
-                $estoque->save();
-            }
-        });
+
+                if ($cupom) {
+                    if (method_exists($pedido, 'cupons')) {
+                        $pedido->cupons()->attach($cupom->id, ['desconto_aplicado' => $desconto]);
+                    } else {
+                        DB::table('pedido_cupons')->insert([
+                            'pedido_id' => $pedido->id,
+                            'cupom_id' => $cupom->id,
+                            'desconto_aplicado' => $desconto,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            });
+        } catch (\Exception $e) {
+            Log::error('Erro ao finalizar pedido: ' . $e->getMessage(), [
+                'exception' => $e,
+                'cart' => $carrinho,
+                'user_id' => $userId,
+            ]);
+
+            return back()->with('error', $e->getMessage());
+        }
 
         session()->forget('carrinho');
 
@@ -225,29 +362,54 @@ class PedidoController extends Controller
      */
     protected function syncCartSession(array $items, ?string $cep = null, ?array $endereco = null)
     {
-        // subtotal
         $subtotal = array_sum(array_map(fn($i) => $i['preco'] * $i['quantidade'], $items));
 
-        // frete
         if ($subtotal > 200)           $frete = 0;
         elseif ($subtotal >= 52)       $frete = 15;
         else                           $frete = 20;
 
-        // total
-        $total = $subtotal + $frete;
+        $totalBeforeCoupon = $subtotal + $frete;
 
-        session([
-            'carrinho' => [
-                'items'    => $items,
-                'subtotal' => $subtotal,
-                'frete'    => $frete,
-                'total'    => $total,
-                'cep'      => $cep,
-                'endereco' => $endereco,
-            ],
-        ]);
+        $cupomSession = session('carrinho.cupom', null);
+        $desconto = 0;
+
+        if ($cupomSession && isset($cupomSession['id'])) {
+            $cupom = \App\Models\Cupom::find($cupomSession['id']);
+            if ($cupom && $cupom->isActiveNow() && $cupom->isValidForSubtotal($subtotal)) {
+                $desconto = $cupom->calculateDiscount($subtotal);
+                $cupomSession['desconto_aplicado'] = $desconto;
+            } else {
+                $cupomSession = null;
+            }
+        }
+
+        $total = max(0, $totalBeforeCoupon - $desconto);
+
+        $carrinhoToSave = [
+            'items'    => $items,
+            'subtotal' => $subtotal,
+            'frete'    => $frete,
+            'total'    => $total,
+            'cep'      => $cep,
+            'endereco' => $endereco,
+        ];
+
+
+        if ($cupomSession) {
+            $carrinhoToSave['cupom'] = $cupomSession;
+        } else {
+            session([
+                'carrinho' => [
+                    'items'    => $items,
+                    'subtotal' => $subtotal,
+                    'frete'    => $frete,
+                    'total'    => $total,
+                    'cep'      => $cep,
+                    'endereco' => $endereco,
+                ],
+            ]);
+        }
     }
-
     /**
      * Define o CEP e endereço do carrinho.
      */

@@ -23,4 +23,11 @@ class Pedido extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function cupons()
+    {
+        return $this->belongsToMany(Cupom::class, 'pedido_cupons', 'pedido_id', 'cupom_id')
+            ->withPivot('desconto_aplicado')
+            ->withTimestamps();
+    }
 }

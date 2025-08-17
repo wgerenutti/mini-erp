@@ -74,6 +74,30 @@
                 {{ number_format($c['subtotal'], 2, ',', '.') }}</strong></div>
         <div class="d-flex justify-content-between"><span>Frete:</span><strong>R$
                 {{ number_format($c['frete'], 2, ',', '.') }}</strong></div>
+
+        @if (isset($c['cupom']))
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                    <strong>Cupom: {{ $c['cupom']['codigo'] }}</strong>
+                    <div class="small text-muted">Desconto aplicado</div>
+                </div>
+                <div>
+                    <strong>- R$ {{ number_format($c['cupom']['desconto_aplicado'], 2, ',', '.') }}</strong>
+                    <button id="remove-cupom-btn" class="btn btn-sm btn-link text-danger ms-2">Remover</button>
+                </div>
+            </div>
+        @else
+            <form id="apply-cupom-form" class="d-flex gap-2 mt-3">
+                <input type="text" name="codigo" class="form-control form-control-sm" placeholder="Código do cupom"
+                    required>
+                <button class="btn btn-sm btn-outline-primary" type="submit">
+                    Aplicar
+                    <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </form>
+        @endif
+
+        <hr>
         <div class="d-flex justify-content-between"><span>Total:</span><strong>R$
                 {{ number_format($c['total'], 2, ',', '.') }}</strong></div>
     </div>
@@ -82,12 +106,19 @@
         @csrf
         <input type="hidden" name="cep" value="{{ $c['cep'] }}">
 
-        <button type="submit" class="btn btn-success w-100 position-relative"
-            @if (!$c['cep']) disabled title="Informe o CEP antes de finalizar" @endif>
-            <span
-                class="spinner-border spinner-border-sm position-absolute top-50 start-50 translate-middle d-none finalize-spinner"
-                role="status"></span>
-            <span class="finalize-text">Finalizar Pedido</span>
-        </button>
+        @php $hasCep = (bool) $c['cep']; @endphp
+
+        <span
+            @if (!$hasCep) title="Informe o CEP antes de finalizar" data-bs-toggle="tooltip" data-bs-placement="top" @endif
+            class="d-block w-100">
+            <button type="submit"
+                class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 finalize-btn"
+                @if (!$hasCep) disabled aria-disabled="true" @endif aria-live="polite"
+                aria-busy="false">
+                <span class="finalize-spinner spinner-border spinner-border-sm d-none" role="status"
+                    aria-hidden="true"></span>
+                <span class="finalize-text">Finalizar Pedido</span>
+            </button>
+        </span>
     </form>
 @endif

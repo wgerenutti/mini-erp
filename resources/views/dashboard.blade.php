@@ -40,6 +40,19 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi bi-receipt display-4 text-info"></i>
+                                <h5 class="card-title mt-3">Total de Cupons</h5>
+                                <h2 class="card-text display-6">{{ \App\Models\Cupom::count() }}</h2>
+                                <a href="{{ route('cupons.index') }}" class="btn btn-info btn-sm mt-3">
+                                    <i class="bi bi-eye me-1"></i> Ver Cupons
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
 

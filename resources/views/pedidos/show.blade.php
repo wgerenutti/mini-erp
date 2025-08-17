@@ -25,13 +25,52 @@
                         <div class="row">
                             <div class="col-md-4"><strong>Subtotal:</strong> R$
                                 {{ number_format($pedido->subtotal, 2, ',', '.') }}</div>
-                            <div class="col-md-4"><strong>Frete:</strong> R$ {{ number_format($pedido->frete, 2, ',', '.') }}
+                            <div class="col-md-4"><strong>Frete:</strong> R$
+                                {{ number_format($pedido->frete, 2, ',', '.') }}
                             </div>
-                            <div class="col-md-4"><strong>Total:</strong> R$ {{ number_format($pedido->total, 2, ',', '.') }}
+                            <div class="col-md-4"><strong>Total:</strong> R$
+                                {{ number_format($pedido->total, 2, ',', '.') }}
                             </div>
                         </div>
                     </div>
                 </div>
+
+                @if ($pedido->cupons && $pedido->cupons->isNotEmpty())
+                    <hr class="my-3">
+                    <h6>Cupons aplicados</h6>
+                    @foreach ($pedido->cupons as $cupom)
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ $cupom->codigo }}</strong>
+                                <div class="small text-muted">
+                                    @if (!empty($cupom->validade))
+                                        Validade: {{ \Carbon\Carbon::parse($cupom->validade)->format('d/m/Y') }} —
+                                    @endif
+                                    @if (!is_null($cupom->pct_desc))
+                                        {{ number_format($cupom->pct_desc, 2, ',', '.') }}% (percentual)
+                                    @elseif(!is_null($cupom->valor_desc))
+                                        R$ {{ number_format($cupom->valor_desc, 2, ',', '.') }} (valor)
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="text-end">
+                                <div class="text-muted small">Desconto aplicado</div>
+                                <strong>- R$
+                                    {{ number_format($cupom->pivot->desconto_aplicado ?? 0, 2, ',', '.') }}</strong>
+
+                                @if (Route::has('cupons.edit'))
+                                    <div class="mt-1">
+                                        <a href="{{ route('cupons.edit', $cupom->id) }}"
+                                            class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i> Ver cupom
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
 
                 <h5 class="mb-3">Itens do Pedido</h5>
                 @if ($pedido->itens->isEmpty())

@@ -255,18 +255,101 @@
         });
 
         document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('.finalize-form');
-            if (!form) return;
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+                new bootstrap.Tooltip(el);
+            });
 
-            form.addEventListener('submit', function(e) {
-                const btn = form.querySelector('button[type="submit"]');
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                if (!form.classList || !form.classList.contains('finalize-form')) return;
+
+                if (form.dataset.sending === '1') {
+                    e.preventDefault();
+                    return;
+                }
+
+                const cepInput = form.querySelector('input[name="cep"]');
+                if (!cepInput || !cepInput.value) {
+                    e.preventDefault();
+                    const span = form.querySelector('[data-bs-toggle="tooltip"]');
+                    if (span) {
+                        const tip = bootstrap.Tooltip.getInstance(span) || new bootstrap.Tooltip(span);
+                        tip.show();
+                        setTimeout(() => tip.hide(), 1500);
+                    }
+                    return;
+                }
+
+                form.dataset.sending = '1';
+
+                const btn = form.querySelector('.finalize-btn');
                 const spinner = btn.querySelector('.finalize-spinner');
                 const text = btn.querySelector('.finalize-text');
 
                 btn.disabled = true;
-                text.classList.add('visually-hidden');
+                btn.setAttribute('aria-busy', 'true');
                 spinner.classList.remove('d-none');
+                text.textContent = 'Processando pedido…';
+
             });
+        });
+
+        document.addEventListener('submit', async function(e) {
+            if (e.target && e.target.id === 'apply-cupom-form') {
+                e.preventDefault();
+                const form = e.target;
+                const btn = form.querySelector('button');
+                const spinner = btn.querySelector('.spinner-border');
+                const input = form.querySelector('input[name="codigo"]');
+                const token = document.querySelector('meta[name="csrf-token"]').content;
+
+                spinner.classList.remove('d-none');
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch("{{ route('carrinho.aplicar_cupom') }}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codigo: input.value
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Erro ao aplicar cupom');
+
+                    document.querySelector('#cartCanvas .offcanvas-body').innerHTML = data.cart_html;
+                } catch (err) {
+                    alert(err.message || 'Erro ao aplicar cupom');
+                } finally {
+                    spinner.classList.add('d-none');
+                    btn.disabled = false;
+                }
+            }
+        });
+
+        document.addEventListener('click', async function(e) {
+            if (e.target && (e.target.id === 'remove-cupom-btn' || e.target.closest('#remove-cupom-btn'))) {
+                e.preventDefault();
+                const token = document.querySelector('meta[name="csrf-token"]').content;
+                try {
+                    const res = await fetch("{{ route('carrinho.remover_cupom') }}", {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    if (!res.ok) throw new Error('Erro ao remover cupom');
+                    const data = await res.json();
+                    document.querySelector('#cartCanvas .offcanvas-body').innerHTML = data.cart_html;
+                } catch (err) {
+                    alert('Não foi possível remover o cupom.');
+                }
+            }
         });
     </script>
 @endpush
