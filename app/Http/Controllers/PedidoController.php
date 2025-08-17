@@ -12,6 +12,8 @@ use App\Models\Estoque;
 use App\Models\Cupom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\PedidoCriadoNotification;
+use Illuminate\Support\Facades\Notification;
 
 class PedidoController extends Controller
 {
@@ -262,9 +264,11 @@ class PedidoController extends Controller
         }
 
         $userId = Auth::id();
+        $createdPedido = null;
 
         try {
-            DB::transaction(function () use ($cep, $endereco, $carrinho, $userId) {
+            // Faz a transação e retorna o Pedido criado
+            $createdPedido = DB::transaction(function () use ($cep, $endereco, $carrinho, $userId) {
                 $cupomData = $carrinho['cupom'] ?? null;
                 $desconto = 0;
                 $cupom = null;
@@ -339,6 +343,9 @@ class PedidoController extends Controller
                         ]);
                     }
                 }
+
+                // retorna o pedido criado para fora da transaction
+                return $pedido;
             });
         } catch (\Exception $e) {
             Log::error('Erro ao finalizar pedido: ' . $e->getMessage(), [
@@ -348,6 +355,24 @@ class PedidoController extends Controller
             ]);
 
             return back()->with('error', $e->getMessage());
+        }
+
+        // Se chegou até aqui: transação OK e $createdPedido contém o Pedido criado
+        // Notifica o usuário (o envio do e-mail não deve impedir o fluxo)
+        try {
+            $user = Auth::user();
+            if ($user && $createdPedido) {
+                // notifica o criador do pedido
+                $user->notify(new PedidoCriadoNotification($createdPedido));
+                // se quisesse notificar um admin também, poderia:
+                // \Notification::route('mail', 'admin@exemplo.test')->notify(new PedidoCriadoNotification($createdPedido));
+            }
+        } catch (\Throwable $e) {
+            // não falha o processo de checkout por conta do email; só loga
+            Log::error('Falha ao enviar notificação do pedido: ' . $e->getMessage(), [
+                'pedido_id' => $createdPedido->id ?? null,
+                'user_id' => $userId,
+            ]);
         }
 
         session()->forget('carrinho');

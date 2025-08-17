@@ -12,6 +12,7 @@ class Pedido extends Model
         'subtotal',
         'frete',
         'total',
+        'created_by'
     ];
 
     public function itens()
@@ -29,5 +30,10 @@ class Pedido extends Model
         return $this->belongsToMany(Cupom::class, 'pedido_cupons', 'pedido_id', 'cupom_id')
             ->withPivot('desconto_aplicado')
             ->withTimestamps();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }
